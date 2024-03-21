@@ -49,3 +49,9 @@ Some caveats which could affect how you want to use the code, but are fixable:
   -  the number of threads and the number of chains are currently assumed to be identical
   -  the priors are currently assumed to be a product distribution (i.e. all variables' priors are independent)
   -  the proposals are currently hardcoded to a truncated gaussian distribution (stdev in each axis equal to the prior's stdev / 10 )
+
+## Sangria reading code
+
+This code just reads the [Sangria training data](https://lisa-ldc.lal.in2p3.fr/challenge2a) (assumed to have been downloaded to the current folder), processes it a bit and makes plots.
+
+The data loaded into memory and then converted to the A,E,T basis, periodogrammed, and plotted.
