@@ -9,7 +9,7 @@ Open a terminal in the cloned repo's folder. Start Julia with several threads (f
 $ julia -t 4
 ```
 As a small aside, the Julia workflow is a little different than python -- because Julia uses just-in-time compilation, you'll avoid excessive recompilation if you leave a julia REPL running between editing and rerunning code.
-[Activating the environment](#environment)
+
 ## Activating the environment
 Next we'll want to activate the environment in this folder
 ```julia-repl
@@ -27,7 +27,7 @@ This will take a little while.
 Then you'll be able to run the codes here.
 
 # How to run
-Each time you re-open Julia, you'll need to [reactivate the environment](#environment) in this folder before running any of the codes.
+Each time you re-open Julia, you'll need to [reactivate the environment](#activating-the-environment) in this folder before running any of the codes.
 
 There are currently two mostly unrelated things here:
   - A parallel-tempered MCMC code in `pt.jl`
