@@ -43,6 +43,7 @@ You can run a test of the code (implementing a fit of the data from [Hogg et al 
 julia> include("pt.jl")
 julia> demo()
 ```
+This will create the file `corner_pt.png` with a corner plot of the samples.
 
 Some caveats which could affect how you want to use the code, but are fixable:
   -  the number of threads and the number of chains are currently assumed to be identical
