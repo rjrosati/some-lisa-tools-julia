@@ -36,7 +36,7 @@ There are currently two mostly unrelated things here:
 ## Parallel-tempered MCMC
 
 This code is a mostly textbook implementation of a [parallel-tempered MCMC](https://en.wikipedia.org/wiki/Parallel_tempering).
-It is based off of a geophysics review paper (link??).
+It is based off of a [geophysics review paper](https://academic.oup.com/gji/article/196/1/357/585739?login=false).
 
 You can run a test of the code (implementing a fit of the data from [Hogg et al (2010)](https://arxiv.org/abs/1008.4686)) with
 ```julia-repl
