@@ -17,7 +17,7 @@ lk = ReentrantLock()
 rand(x::NamedTuple) = map(rand,x)
 # assume distributions are boring products
 Distributions.pdf(d::NamedTuple,p::NamedTuple) = prod([Distributions.pdf(x,y) for (x,y) in zip(d,p)])
-logpdf(d::NamedTuple,p::NamedTuple) = sum([log(Distributions.pdf(x,y)) for (x,y) in zip(d,p)])
+logpdf(d::NamedTuple,p::NamedTuple) = sum([Distributions.logpdf(x,y) for (x,y) in zip(d,p)])
 
 function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples :: Int,num_chains :: Int,burn=Int(2e2),Tskip::Int = 1000,tstep::Float64=1+sqrt(2/length(priors)),Tmin::Int=1)
     function logprior(θ)
