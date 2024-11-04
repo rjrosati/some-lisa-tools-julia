@@ -17,7 +17,7 @@ lk = ReentrantLock()
 rand(x::NamedTuple) = map(rand,x)
 # assume distributions are boring products
 Distributions.pdf(d::NamedTuple,p::NamedTuple) = prod([Distributions.pdf(x,y) for (x,y) in zip(d,p)])
-logpdf(d::NamedTuple,p::NamedTuple) = sum([log(Distributions.pdf(x,y)) for (x,y) in zip(d,p)])
+logpdf(d::NamedTuple,p::NamedTuple) = sum([Distributions.logpdf(x,y) for (x,y) in zip(d,p)])
 
 function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples :: Int,num_chains :: Int,burn=Int(2e2),Tskip::Int = 1000,tstep::Float64=1+sqrt(2/length(priors)),Tmin::Int=1)
     function logprior(θ)
@@ -62,11 +62,11 @@ function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples ::
             tries = 0
             while trows + Tskip >= nrow(tsamples_all[i])
                 proposal = rand(g(current))
-                probjump = Distributions.pdf(g(current),proposal)
-                probback = Distributions.pdf(g(proposal),current)
+                probjump = Distributions.logpdf(g(current),proposal)
+                probback = Distributions.logpdf(g(proposal),current)
                 proposal_ll = log_likelihood(proposal, data)
                 proposal_posterior = proposal_ll/tladder[i] + logprior(proposal)
-                acceptance_prob = proposal_posterior - current_posterior + log(probback/probjump)
+                acceptance_prob = proposal_posterior - current_posterior + probback - probjump
                 #if tries > 10000
                 #    println("Extremely low acceptance rate???")
                 #end
