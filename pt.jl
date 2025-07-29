@@ -16,7 +16,7 @@ lk = ReentrantLock()
 
 length(x::Distributions.ProductNamedTupleDistribution) = length(x.dists)
 keys(x::Distributions.ProductNamedTupleDistribution) = keys(x.dists)
-iterate(x::Distributions.ProductNamedTupleDistribution, i::Int) = iterate(x.dists,i)
+iterate(x::Distributions.ProductNamedTupleDistribution, args...) = iterate(x.dists, args...)
 
 function pt_mh(priors::T, log_likelihood::Function, data, nsamples :: Int, ntemps :: Int, burn=Int(2e2), Tskip::Int = 1000, tstep::Float64=1+sqrt(2/length(priors)), Tmin::Int=1) where {T <: Distribution}
     function logprior(θ)
