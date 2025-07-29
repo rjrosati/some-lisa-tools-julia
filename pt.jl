@@ -4,7 +4,7 @@ using Distributions
 using Random
 using ProgressMeter
 using Base.Iterators
-import Base.rand
+import Base: length, keys, iterate
 using CairoMakie
 using PairPlots
 
@@ -14,12 +14,11 @@ using PairPlots
 
 lk = ReentrantLock()
 
-rand(x::NamedTuple) = map(rand,x)
-# assume distributions are boring products
-Distributions.pdf(d::NamedTuple,p::NamedTuple) = prod([Distributions.pdf(x,y) for (x,y) in zip(d,p)])
-logpdf(d::NamedTuple,p::NamedTuple) = sum([Distributions.logpdf(x,y) for (x,y) in zip(d,p)])
+length(x::Distributions.ProductNamedTupleDistribution) = length(x.dists)
+keys(x::Distributions.ProductNamedTupleDistribution) = keys(x.dists)
+iterate(x::Distributions.ProductNamedTupleDistribution, i::Int) = iterate(x.dists,i)
 
-function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples :: Int,num_chains :: Int,burn=Int(2e2),Tskip::Int = 1000,tstep::Float64=1+sqrt(2/length(priors)),Tmin::Int=1)
+function pt_mh(priors::T, log_likelihood::Function, data, nsamples :: Int, ntemps :: Int, burn=Int(2e2), Tskip::Int = 1000, tstep::Float64=1+sqrt(2/length(priors)), Tmin::Int=1) where {T <: Distribution}
     function logprior(θ)
         return logpdf(priors,θ)
     end
@@ -27,20 +26,20 @@ function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples ::
     samples[:,:loglike] = Float64[]
     samples[:,:logpos] = Float64[]
     samples[:,:temp] = Float64[]
-    if num_chains > Threads.nthreads()
-        println("WARNING: Requested $num_chains parallel tempered chains but only $(Threads.nthreads()) threads are available. Recommend restarting Julia with more threads.")
+    if ntemps > Threads.nthreads()
+        println("WARNING: Requested $ntemps parallel tempered chains but only $(Threads.nthreads()) threads are available. Recommend restarting Julia with more threads.")
     end
-    tladder = Tmin .* tstep.^(0:(num_chains-1))
+    tladder = Tmin .* tstep.^(0:(ntemps-1))
     # distribution for proposals
     σs = map(x -> x/10, map(std,priors))
     lowers = map(x->x.a,priors)
     uppers = map(x->x.b,priors)
-    g(x) = (; zip(keys(priors), [truncated(Normal(μ,σ),a,b) for (μ,σ,a,b) in zip(x,σs,lowers,uppers) ] )...)
+    g(x) = product_distribution((; zip(keys(priors), [truncated(Normal(μ,σ),a,b) for (μ,σ,a,b) in zip(x,σs,lowers,uppers) ] )...))
 
-    iter = Progress((nsamples+burn)*num_chains)
-    tsamples_all = Array{DataFrame}(undef,num_chains)
+    iter = Progress((nsamples+burn)*ntemps)
+    tsamples_all = Array{DataFrame}(undef,ntemps)
     # initialize sample arrays for each chain
-    for i in 1:num_chains
+    for i in 1:ntemps
         tsamples=DataFrame([ x => Float64[] for x in keys(priors)])
         tsamples[:,:loglike] = Float64[]
         tsamples[:,:logpos] = Float64[]
@@ -52,9 +51,9 @@ function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples ::
         next!(iter)
         tsamples_all[i] = tsamples
     end
-    nsampled = num_chains
-    while nsampled < num_chains*(nsamples + burn)
-        Threads.@threads for i in 1:num_chains
+    nsampled = ntemps
+    while nsampled < ntemps*(nsamples + burn)
+        Threads.@threads for i in 1:ntemps
             trows = nrow(tsamples_all[i])
             current = (;tsamples_all[i][end,1:end-3]...)
             current_ll = tsamples_all[i][end,:loglike]
@@ -84,10 +83,10 @@ function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples ::
         end # for
         # swap temps
         lock(lk) do
-            nsampled += num_chains*Tskip
-            for i in 1:num_chains
-                n = rand(1:num_chains)
-                m = rand((1:num_chains)[1:num_chains .!= n])
+            nsampled += ntemps*Tskip
+            for i in 1:ntemps
+                n = rand(1:ntemps)
+                m = rand((1:ntemps)[1:ntemps .!= n])
                 r1 = (tsamples_all[m].loglike[end] - tsamples_all[n].loglike[end])/tladder[n]
                 r2 = (tsamples_all[n].loglike[end] - tsamples_all[m].loglike[end])/tladder[m]
                 if log(rand()) <= r1+r2
@@ -99,7 +98,7 @@ function pt_mh(priors :: NamedTuple, log_likelihood::Function, data, nsamples ::
             end # for
         end # lock
     end # while
-    for i in 1:num_chains
+    for i in 1:ntemps
         deleteat!(tsamples_all[i],1:burn)
         lock(lk) do
             append!(samples,tsamples_all[i])
@@ -113,16 +112,16 @@ function demo()
     # try out https://arxiv.org/abs/1008.4686
     data = CSV.read("demo_data.dat",DataFrame)
     deleteat!(data,1:4)
-    priors = (
+    priors = product_distribution((
                   m = Uniform(-1.0,5.0),
                   b = Uniform(-1000.0,1000.0)
-                 )
+                 ))
     function log_likelihood(θ,data)
         return sum( -0.5*(((data.y .- θ.m .* data.x .- θ.b)./data.sy).^2 .+ log(2π)) .- log.(data.sy))
     end
 
-    results = pt_mh(priors,log_likelihood,data,20000,4,Int(200))
-    valid_results = results[results.temp .== 1.0,:]
-    fig = pairplot(valid_results[!,1:end-3])
+    results = pt_mh(priors, log_likelihood, data, 20000, 4, Int(200))
+    cold_chain_results = results[results.temp .== 1.0,:]
+    fig = pairplot(cold_chain_results[!,1:end-3])
     save("corner_pt.png",fig)
 end
